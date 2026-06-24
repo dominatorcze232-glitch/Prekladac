@@ -248,7 +248,7 @@
             background: #fafafa;
         }
 
-        /* Správa slov (seznam s možností mazání) */
+        /* Správa slov */
         .words-manager {
             margin-top: 15px;
             max-height: 200px;
@@ -294,14 +294,14 @@
 
         <div class="panels">
             <div class="panel">
-                <textarea id="sourceText" placeholder="Zadejte text k překladu..." oninput="translateText()"></textarea>
+                <textarea id="sourceText" placeholder="Zadejte text nebo celou větu..." oninput="translateText()"></textarea>
             </div>
             <div class="panel" style="background-color: #f1f3f4;">
                 <div id="outputText" class="output-text" style="color: #5f6368;">Překlad se zobrazí zde...</div>
                 <div id="outputPronunciation" class="pronunciation"></div>
                 
                 <select id="verbGenderQuery" class="verb-gender-select" onchange="applyVerbGender()">
-                    <option value="">-- Vyber rod podmětu pro správné sloveso --</option>
+                    <option value="">-- Vyber rod podmětu pro správné sloveso v textu --</option>
                     <option value="m_anim">Mužský životný</option>
                     <option value="m_inanim">Mužský neživotný</option>
                     <option value="f">Ženský</option>
@@ -402,7 +402,7 @@
         const db = getDatabase(app);
 
         window.allLanguages = {};
-        window.currentSelectedVerbData = null;
+        window.currentSelectedVerbWords = []; // Pole pro ukládání nalezených sloves v aktuální větě
 
         // Ověření hesla pro administrátora
         window.verifyAdmin = function() {
@@ -424,7 +424,6 @@
             translateText();
         });
 
-        // Inteligentní vykreslení selectů tak, aby bylo možné zvolit jakýkoliv směr
         function renderLanguageSelectors() {
             const srcLang = document.getElementById('srcLang');
             const destLang = document.getElementById('destLang');
@@ -441,26 +440,18 @@
                 destLang.innerHTML += `<option value="${code}">${lang.name}</option>`;
             });
 
-            // Nastavení výchozích hodnot po načtení (pokud databáze dodá aspoň jeden cizí jazyk)
             if (Object.keys(window.allLanguages).length > 0) {
                 srcLang.value = prevSrc;
-                // Pokud ještě nebyl vybrán cizí jazyk, vybereme první dostupný
                 destLang.value = prevDest || Object.keys(window.allLanguages)[0];
                 
-                // Ochrana: Nenecháme v obou oknech stejný jazyk
-                if (srcLang.value === destLang.value) {
-                    if (srcLang.value === "cz") {
-                        destLang.value = Object.keys(window.allLanguages)[0];
-                    } else {
-                        destLang.value = "cz";
-                    }
+                if (srcLang.value === destSelect.value) {
+                    destLang.value = (srcLang.value === "cz") ? Object.keys(window.allLanguages)[0] : "cz";
                 }
             } else {
                 destLang.innerHTML = '<option value="">(Nejprve přidej jazyk)</option>';
             }
         }
 
-        // Kontrola při manuální změně jazyka (zabraňuje vybrat CZ -> CZ)
         window.handleLangChange = function(changedSide) {
             const srcSelect = document.getElementById('srcLang');
             const destSelect = document.getElementById('destLang');
@@ -475,7 +466,6 @@
             translateText();
         }
 
-        // Prohození jazyků
         window.swapLanguages = function() {
             const srcSelect = document.getElementById('srcLang');
             const destSelect = document.getElementById('destLang');
@@ -484,24 +474,19 @@
             srcSelect.value = destSelect.value;
             destSelect.value = temp;
 
-            // Prohodíme i texty, pokud nějaké jsou
             const sourceText = document.getElementById('sourceText');
             const outputText = document.getElementById('outputText');
             
             if (sourceText.value && outputText.innerText && outputText.innerText !== 'Slovo neexistuje nebo není přidané') {
-                // Vyčistíme případné opravy tvarů a vezmeme čistý překlad
-                let cleanOutput = outputText.innerText.split(" (opraveno")[0].toLowerCase();
-                sourceText.value = cleanOutput;
+                sourceText.value = outputText.innerText.split(" (opraveno")[0];
             }
             
             translateText();
         }
 
-        // Vykreslení správy jazyků v Administraci
         function renderAdminLangList() {
             const list = document.getElementById('adminLangList');
             list.innerHTML = '';
-
             Object.keys(window.allLanguages).forEach(code => {
                 const lang = window.allLanguages[code];
                 list.innerHTML += `
@@ -516,7 +501,6 @@
             });
         }
 
-        // MODÁLNÍ OKNA OTEVŘÍT/ZAVŘÍT
         window.openLangModal = function() { document.getElementById('langModal').style.display = 'flex'; }
         window.openWordModal = function(langCode) {
             document.getElementById('activeLangCode').value = langCode;
@@ -545,36 +529,24 @@
             document.getElementById('v_n').value = '';
         }
 
-        // UKLÁDÁNÍ JAZYKA DO FIREBASE
         window.saveLanguage = function() {
             const name = document.getElementById('newLangName').value.trim();
             const code = document.getElementById('newLangCode').value.trim().toLowerCase();
-
             if(!name || !code) return alert("Vyplňte všechny údaje!");
-
-            set(ref(db, 'languages/' + code), {
-                name: name,
-                words: {}
-            }).then(() => {
+            set(ref(db, 'languages/' + code), { name: name, words: {} }).then(() => {
                 closeModal('langModal');
                 document.getElementById('newLangName').value = '';
                 document.getElementById('newLangCode').value = '';
                 alert("Jazyk úspěšně vytvořen!");
-            }).catch((err) => {
-                alert("Chyba databáze: " + err.message);
             });
         }
 
-        // MAZÁNÍ CELÉHO JAZYKA
         window.deleteLanguage = function(code) {
-            if(confirm(`Opravdu chcete smazat celý jazyk [${code.toUpperCase()}] včetně všech slov?`)) {
-                remove(ref(db, 'languages/' + code)).then(() => {
-                    alert("Jazyk smazán!");
-                });
+            if(confirm(`Opravdu chcete smazat celý jazyk [${code.toUpperCase()}]?`)) {
+                remove(ref(db, 'languages/' + code));
             }
         }
 
-        // UKLÁDÁNÍ SLOVA
         window.saveWord = function() {
             const langCode = document.getElementById('activeLangCode').value;
             const cz = document.getElementById('wordCz').value.trim().toLowerCase();
@@ -582,14 +554,9 @@
             const pron = document.getElementById('wordPron').value.trim();
             const type = document.getElementById('wordType').value;
 
-            if(!cz || !foreign) return alert("Slovo v češtině i cizím jazyce musí být vyplněno!");
+            if(!cz || !foreign) return alert("Vyplňte povinná pole!");
 
-            let wordData = {
-                cz: cz,
-                foreign: foreign,
-                pronunciation: pron,
-                type: type
-            };
+            let wordData = { cz: cz, foreign: foreign, pronunciation: pron, type: type };
 
             if(type === 'verb') {
                 wordData.forms = {
@@ -601,47 +568,37 @@
             }
 
             const wordRef = push(ref(db, `languages/${langCode}/words`));
-            set(wordRef, wordData).then(() => {
-                resetWordForm();
-                renderWordsManager(langCode);
-            });
+            set(wordRef, wordData).then(() => { resetWordForm(); renderWordsManager(langCode); });
         }
 
-        // Zobrazení a mazání slov v administraci
         function renderWordsManager(langCode) {
             const container = document.getElementById('wordsManagerList');
             container.innerHTML = '';
             const lang = window.allLanguages[langCode];
-            
-            if(!lang || !lang.words) {
-                container.innerHTML = '<em>Zatím nebyla přidána žádná slova.</em>';
-                return;
-            }
+            if(!lang || !lang.words) { container.innerHTML = '<em>Žádná slova.</em>'; return; }
 
             Object.keys(lang.words).forEach(wordId => {
                 const w = lang.words[wordId];
                 const item = document.createElement('div');
                 item.className = 'word-item';
-                item.innerHTML = `
-                    <span><strong>${w.cz}</strong> -> ${w.foreign} <em>(${w.type})</em></span>
-                    <button class="btn btn-danger" style="padding:2px 8px; font-size:12px;">Smazat</button>
-                `;
+                item.innerHTML = `<span><strong>${w.cz}</strong> -> ${w.foreign}</span><button class="btn btn-danger" style="padding:2px 8px; font-size:12px;">Smazat</button>`;
                 item.querySelector('button').onclick = () => {
-                    if(confirm(`Smazat slovo "${w.cz}"?`)) {
-                        remove(ref(db, `languages/${langCode}/words/${wordId}`)).then(() => {
-                            renderWordsManager(langCode);
-                        });
-                    }
+                    if(confirm(`Smazat "${w.cz}"?`)) remove(ref(db, `languages/${langCode}/words/${wordId}`)).then(() => renderWordsManager(langCode));
                 };
                 container.appendChild(item);
             });
         }
 
-        // LOGIKA OBOUSMĚRNÉHO PŘEKLADU
+        // CHYTRÁ FUNKCE PRO DETEKCI INTERPUNKCE (tečky, otazníky...)
+        function cleanWord(word) {
+            return word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+        }
+
+        // LOGIKA CELOVĚTNÉHO PŘEKLADU
         window.translateText = function() {
             const src = document.getElementById('srcLang').value;
             const dest = document.getElementById('destLang').value;
-            const text = document.getElementById('sourceText').value.trim().toLowerCase();
+            const text = document.getElementById('sourceText').value.trim();
             
             const outText = document.getElementById('outputText');
             const outPron = document.getElementById('outputPronunciation');
@@ -650,7 +607,7 @@
             outText.innerText = '';
             outPron.innerText = '';
             verbSelect.style.display = 'none';
-            window.currentSelectedVerbData = null;
+            window.currentSelectedVerbWords = [];
 
             if(!text) {
                 outText.innerText = 'Překlad se zobrazí zde...';
@@ -660,6 +617,13 @@
 
             outText.style.color = '#202124';
 
+            // Rozdělení věty na slova pomocí mezer
+            const rawWords = text.split(/\s+/);
+            let translatedSentence = [];
+            let pronunciationSentence = [];
+            let globalVerbFound = false;
+            let totalWordsFound = 0;
+
             // 1. SMĚR: Z ČEŠTINY DO CIZÍHO JAZYKA
             if(src === 'cz') {
                 const lang = window.allLanguages[dest];
@@ -668,21 +632,55 @@
                     return;
                 }
 
-                const foundKey = Object.keys(lang.words).find(k => lang.words[k].cz === text);
-                
-                if(foundKey) {
-                    const word = lang.words[foundKey];
-                    if(word.type === 'verb') {
-                        window.currentSelectedVerbData = word;
-                        verbSelect.style.display = 'block'; // Zobrazíme otázku na rod podmětu
-                        outText.innerText = word.foreign;
-                    } else {
-                        outText.innerText = word.foreign;
+                rawWords.forEach(rawWord => {
+                    const cleaned = cleanWord(rawWord).toLowerCase();
+                    if (!cleaned) {
+                        translatedSentence.push(rawWord); // Samostatný otazník/tečka
+                        return;
                     }
-                    if(word.pronunciation) outPron.innerText = `[vyslovuje se: ${word.pronunciation}]`;
-                } else {
+
+                    const foundKey = Object.keys(lang.words).find(k => lang.words[k].cz === cleaned);
+                    
+                    if(foundKey) {
+                        const word = lang.words[foundKey];
+                        totalWordsFound++;
+                        
+                        // Zachování interpunkce přilepené ke slovu
+                        let leftOver = rawWord.replace(new RegExp(cleanWord(rawWord), 'i'), '');
+
+                        if(word.type === 'verb') {
+                            globalVerbFound = true;
+                            // Uložíme si referenci na objekt slova pro pozdější skloňování cele věty
+                            window.currentSelectedVerbWords.push({ index: translatedSentence.length, wordData: word, suffix: leftOver });
+                            translatedSentence.push(word.foreign + leftOver);
+                        } else {
+                            translatedSentence.push(word.foreign + leftOver);
+                        }
+
+                        if(word.pronunciation) {
+                            pronunciationSentence.push(word.pronunciation);
+                        } else {
+                            pronunciationSentence.push(word.foreign);
+                        }
+                    } else {
+                        // Pokud slovo nezná, nechá původní a přidá hvězdičku
+                        translatedSentence.push(rawWord + "*");
+                        pronunciationSentence.push(rawWord);
+                    }
+                });
+
+                if(totalWordsFound === 0) {
                     outText.innerText = 'Slovo neexistuje nebo není přidané';
+                    return;
                 }
+
+                outText.innerText = translatedSentence.join(" ");
+                if(pronunciationSentence.length > 0) outPron.innerText = `[vyslovuje se: ${pronunciationSentence.join(" ")}]`;
+                
+                if(globalVerbFound) {
+                    verbSelect.style.display = 'block';
+                }
+
             } 
             // 2. SMĚR: Z CIZÍHO JAZYKA DO ČEŠTINY
             else {
@@ -692,49 +690,75 @@
                     return;
                 }
 
-                // Hledáme v cizích slovech (v základním tvaru nebo ve tvarech slovesa)
-                const foundKey = Object.keys(lang.words).find(k => {
-                    const w = lang.words[k];
-                    if(w.foreign.toLowerCase() === text) return true;
-                    if(w.type === 'verb' && w.forms) {
-                        return Object.values(w.forms).some(f => f.toLowerCase() === text);
+                rawWords.forEach(rawWord => {
+                    const cleaned = cleanWord(rawWord).toLowerCase();
+                    if (!cleaned) {
+                        translatedSentence.push(rawWord);
+                        return;
                     }
-                    return false;
+
+                    const foundKey = Object.keys(lang.words).find(k => {
+                        const w = lang.words[k];
+                        if(w.foreign.toLowerCase() === cleaned) return true;
+                        if(w.type === 'verb' && w.forms) {
+                            return Object.values(w.forms).some(f => f.toLowerCase() === cleaned);
+                        }
+                        return false;
+                    });
+
+                    if(foundKey) {
+                        totalWordsFound++;
+                        const word = lang.words[foundKey];
+                        let leftOver = rawWord.replace(new RegExp(cleanWord(rawWord), 'i'), '');
+                        translatedSentence.push(word.cz.toUpperCase() + leftOver);
+                    } else {
+                        translatedSentence.push(rawWord + "*");
+                    }
                 });
 
-                if(foundKey) {
-                    const word = lang.words[foundKey];
-                    // Překlad do češtiny vypíšeme VELKÝMI PÍSMENY, jak jsi chtěl v zadání
-                    outText.innerText = word.cz.toUpperCase();
-                    
-                    // Zobrazení rodu, pokud to není neurčené/sloveso
-                    if(word.type !== 'unspecified' && word.type !== 'verb') {
-                        let rodCesky = "";
-                        if(word.type === "m_anim") rodCesky = "Mužský životný";
-                        if(word.type === "m_inanim") rodCesky = "Mužský neživotný";
-                        if(word.type === "f") rodCesky = "Ženský";
-                        if(word.type === "n") rodCesky = "Střední";
-                        outPron.innerText = `Rod v cizím jazyce: ${rodCesky}`;
-                    }
-                } else {
+                if(totalWordsFound === 0) {
                     outText.innerText = 'Slovo neexistuje nebo není přidané';
+                    return;
                 }
+
+                outText.innerText = translatedSentence.join(" ");
             }
         }
 
-        // Aplikace opraveného tvaru slovesa
+        // Aplikace správných rodů na všechna nalezená slovesa ve větě
         window.applyVerbGender = function() {
             const gender = document.getElementById('verbGenderQuery').value;
-            const outText = document.getElementById('outputText');
+            const sourceText = document.getElementById('sourceText').value.trim();
+            
+            if(!gender || window.currentSelectedVerbWords.length === 0) return;
 
-            if(window.currentSelectedVerbData && gender) {
-                const forms = window.currentSelectedVerbData.forms;
-                if(forms && forms[gender]) {
-                    outText.innerText = forms[gender] + " (opraveno podle podmětu)";
+            // Znovu vytvoříme základní překlad věty rozdělené na slova
+            const lang = window.allLanguages[document.getElementById('destLang').value];
+            const rawWords = sourceText.split(/\s+/);
+            let translatedSentence = [];
+
+            rawWords.forEach(rawWord => {
+                const cleaned = cleanWord(rawWord).toLowerCase();
+                if (!cleaned) { translatedSentence.push(rawWord); return; }
+
+                const foundKey = Object.keys(lang.words).find(k => lang.words[k].cz === cleaned);
+                if(foundKey) {
+                    let leftOver = rawWord.replace(new RegExp(cleanWord(rawWord), 'i'), '');
+                    translatedSentence.push(lang.words[foundKey].foreign + leftOver);
                 } else {
-                    outText.innerText = window.currentSelectedVerbData.foreign;
+                    translatedSentence.push(rawWord + "*");
                 }
-            }
+            });
+
+            // Teď v poli translatedSentence nahradíme nalezená slovesa jejich správným tvarem podle rodu podmětu
+            window.currentSelectedVerbWords.forEach(item => {
+                const forms = item.wordData.forms;
+                if(forms && forms[gender]) {
+                    translatedSentence[item.index] = forms[gender] + item.suffix;
+                }
+            });
+
+            document.getElementById('outputText').innerText = translatedSentence.join(" ") + " (opraveno podle podmětu)";
         }
 
     </script>
