@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komunitní Překladač</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --bg-color: #f8f9fa;
+            --card-color: #ffffff;
+            --text-color: #3c4043;
+            --border-color: #dadce0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 500;
+            color: #5f6368;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Hlavní kontejner překladače */
+        .translator-container {
+            width: 100%;
+            max-width: 1000px;
+            background: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+            overflow: hidden;
+        }
+
+        .lang-select-bar {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: #fff;
+        }
+
+        .lang-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+        }
+
+        .lang-box:first-child {
+            border-right: 1px solid var(--border-color);
+        }
+
+        select {
+            border: none;
+            outline: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--primary-color);
+            cursor: pointer;
+            background: transparent;
+            width: 100%;
+        }
+
+        .swap-icon {
+            color: #5f6368;
+            cursor: pointer;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .panels {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            min-height: 200px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .panel:first-child {
+            border-right: 1px solid var(--border-color);
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            border: none;
+            resize: none;
+            outline: none;
+            font-size: 18px;
+            color: #202124;
+        }
+
+        .output-text {
+            font-size: 18px;
+            white-space: pre-wrap;
+        }
+
+        .pronunciation {
+            font-size: 14px;
+            color: #5f6368;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .verb-gender-select {
+            margin-top: 15px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            display: none;
+        }
+
+        /* Administrační sekce */
+        .admin-section {
+            display: none;
+            width: 100%;
+            max-width: 1000px;
+            background: white;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-danger { background-color: #d93025; color: white; margin-left: auto; }
+
+        .lang-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #f1f3f4;
+        }
+
+        /* Modální okna (Formuláře) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .verb-forms {
+            display: none;
+            border: 1px dashed var(--border-color);
+            padding: 10px;
+            margin-top: 10px;
+            background: #fafafa;
+        }
+
+        /* Správa slov (seznam s možností mazání) */
+        .words-manager {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <span class="material-icons" style="color: var(--primary-color)">translate</span>
+            <span>Překladač</span>
+        </div>
+        <button class="admin-btn" onclick="verifyAdmin()">P</button>
+    </header>
+
+    <div class="translator-container">
+        <div class="lang-select-bar">
+            <div class="lang-box">
+                <select id="srcLang" onchange="translateText()">
+                    <option value="cz">Čeština</option>
+                </select>
+            </div>
+            <div class="swap-icon" onclick="swapLanguages()">
+                <span class="material-icons">swap_horiz</span>
+            </div>
+            <div class="lang-box">
+                <select id="destLang" onchange="translateText()">
+                    </select>
+            </div>
+        </div>
+
+        <div class="panels">
+            <div class="panel">
+                <textarea id="sourceText" placeholder="Zadejte text k překladu..." oninput="translateText()"></textarea>
+            </div>
+            <div class="panel" style="background-color: #f1f3f4;">
+                <div id="outputText" class="output-text" style="color: #5f6368;">Překlad se zobrazí zde...</div>
+                <div id="outputPronunciation" class="pronunciation"></div>
+                
+                <select id="verbGenderQuery" class="verb-gender-select" onchange="applyVerbGender()">
+                    <option value="">-- Vyber rod podmětu pro správné sloveso --</option>
+                    <option value="m_anim">Mužský životný</option>
+                    <option value="m_inanim">Mužský neživotný</option>
+                    <option value="f">Ženský</option>
+                    <option value="n">Střední</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminPanel" class="admin-section">
+        <div class="admin-header">
+            <h3>Administrace překladatele</h3>
+            <button class="btn btn-primary" onclick="openLangModal()">+ Přidat Jazyk</button>
+        </div>
+        <div id="adminLangList">
+            </div>
+    </div>
+
+    <div id="langModal" class="modal">
+        <div class="modal-content">
+            <h4>Přidat nový jazyk</h4><br>
+            <div class="form-group">
+                <label>Název jazyka (např. Angličtina)</label>
+                <input type="text" id="newLangName">
+            </div>
+            <div class="form-group">
+                <label>Kód jazyka (zkratka, např. en)</label>
+                <input type="text" id="newLangCode">
+            </div>
+            <button class="btn btn-primary" onclick="saveLanguage()">Uložit jazyk</button>
+            <button class="btn" onclick="closeModal('langModal')">Zavřít</button>
+        </div>
+    </div>
+
+    <div id="wordModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h4 id="wordModalTitle">Přidat slovo do jazyka</h4><br>
+            <input type="hidden" id="activeLangCode">
+            
+            <div class="form-group">
+                <label>Česky (Slovo)</label>
+                <input type="text" id="wordCz" placeholder="např. pes nebo dělat">
+            </div>
+            <div class="form-group">
+                <label id="wordForeignLabel">V cizím jazyce</label>
+                <input type="text" id="wordForeign">
+            </div>
+            <div class="form-group">
+                <label>Výslovnost (nepovinné)</label>
+                <input type="text" id="wordPron">
+            </div>
+            <div class="form-group">
+                <label>Slovní druh / Rod</label>
+                <select id="wordType" onchange="toggleWordTypeFields()">
+                    <option value="unspecified">Neurčité / Ostatní</option>
+                    <option value="m_anim">Mužský životný</option>
+                    <option value="m_inanim">Mužský neživotný</option>
+                    <option value="f">Ženský</option>
+                    <option value="n">Střední</option>
+                    <option value="verb">Sloveso</option>
+                </select>
+            </div>
+
+            <div id="verbForms" class="verb-forms">
+                <h5>Tvary slovesa podle rodu podmětu:</h5><br>
+                <div class="form-group"><label>Mužský životný</label><input type="text" id="v_m_anim"></div>
+                <div class="form-group"><label>Mužský neživotný</label><input type="text" id="v_m_inanim"></div>
+                <div class="form-group"><label>Ženský</label><input type="text" id="v_f"></div>
+                <div class="form-group"><label>Střední</label><input type="text" id="v_n"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveWord()">Potvrdit slovo</button>
+            <button class="btn" onclick="closeModal('wordModal')">Zavřít</button>
+
+            <hr style="margin:15px 0; border: 0; border-top: 1px solid var(--border-color);">
+            <h5>Již přidaná slova v tomto jazyce (kliknutím smažeš):</h5>
+            <div id="wordsManagerList" class="words-manager"></div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Tvoje Firebase konfigurace
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxs3xbfPPuIxj9pNpmj2Ekjj5HEz4WBZg",
+            authDomain: "prekladac-f6cad.firebaseapp.com",
+            databaseURL: "https://prekladac-f6cad-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "prekladac-f6cad",
+            storageBucket: "prekladac-f6cad.firebasestorage.app",
+            messagingSenderId: "61981387048",
+            appId: "1:61981387048:web:b8456e6bf8ac1de555081d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Globální proměnné aplikace
+        window.allLanguages = {};
+        window.currentSelectedVerbData = null; // Pomocná pro uložení nalezeného slovesa při překladu
+
+        // Ověření hesla pro administrátora
+        window.verifyAdmin = function() {
+            let pass = prompt("Zadej heslo pro vstup do nastavení Překladátora:");
+            if(pass === "6852") {
+                document.getElementById('adminPanel').style.display = 'block';
+                alert("Přístup povolen!");
+            } else {
+                alert("Nesprávné heslo!");
+            }
+        }
+
+        // Načítání dat z Firebase v reálném čase
+        onValue(ref(db, 'languages'), (snapshot) => {
+            const data = snapshot.val() || {};
+            window.allLanguages = data;
+            renderLanguageSelectors();
+            renderAdminLangList();
+            translateText(); // Přepočítat překlad po změně dat
+        });
+
+        // Vykreslení selectů pro překlad
+        function renderLanguageSelectors() {
+            const srcLang = document.getElementById('srcLang');
+            const destLang = document.getElementById('destLang');
+            
+            const currentSrc = srcLang.value;
+            const currentDest = destLang.value;
+
+            // Vyčistit a nastavit výchozí
+            srcLang.innerHTML = '<option value="cz">Čeština</option>';
+            destLang.innerHTML = '';
+
+            // Přidat cizí jazyky do obou selectů
+            Object.keys(window.allLanguages).forEach(code => {
+                const lang = window.allLanguages[code];
+                srcLang.innerHTML += `<option value="${code}">${lang.name}</option>`;
+                destLang.innerHTML += `<option value="${code}">${lang.name}</option>`;
+            });
+
+            // Pokud v destLang nic není, dáme tam informaci
+            if(destLang.innerHTML === "") {
+                destLang.innerHTML = '<option value="">(Nejprve přidej jazyk)</option>';
+            } else {
+                // Zachovat předchozí výběr, pokud existuje
+                if(currentSrc) srcLang.value = currentSrc;
+                if(currentDest && destLang.querySelector(`option[value="${currentDest}"]`)) destLang.value = currentDest;
+            }
+        }
+
+        // Prohození jazyků v překladači
+        window.swapLanguages = function() {
+            const src = document.getElementById('srcLang').value;
+            const dest = document.getElementById('destLang').value;
+            document.getElementById('srcLang').value = dest;
+            document.getElementById('destLang').value = src;
+            translateText();
+        }
+
+        // Vykreslení správy jazyků v Administraci
+        function renderAdminLangList() {
+            const list = document.getElementById('adminLangList');
+            list.innerHTML = '';
+
+            // Čeština je napevno, nad ní bude pomyslné plus resp. správa ostatních
+            // Vykreslíme přidané jazyky
+            Object.keys(window.allLanguages).forEach(code => {
+                const lang = window.allLanguages[code];
+                list.innerHTML += `
+                    <div class="lang-list-item">
+                        <strong>${lang.name} (${code.toUpperCase()})</strong>
+                        <div>
+                            <button class="btn btn-primary" onclick="openWordModal('${code}')">+ Přidat/Spravovat slova</button>
+                            <button class="btn btn-danger" onclick="deleteLanguage('${code}')">Smazat jazyk</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // MODÁLNÍ OKNA OTEVŘÍT/ZAVŘÍT
+        window.openLangModal = function() { document.getElementById('langModal').style.display = 'flex'; }
+        window.openWordModal = function(langCode) {
+            document.getElementById('activeLangCode').value = langCode;
+            document.getElementById('wordModalTitle').innerText = `Správa slov pro jazyk: ${window.allLanguages[langCode].name}`;
+            document.getElementById('wordForeignLabel').innerText = `V jazyce ${window.allLanguages[langCode].name}`;
+            document.getElementById('wordModal').style.display = 'flex';
+            resetWordForm();
+            renderWordsManager(langCode);
+        }
+        window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; }
+
+        window.toggleWordTypeFields = function() {
+            const type = document.getElementById('wordType').value;
+            document.getElementById('verbForms').style.display = (type === 'verb') ? 'block' : 'none';
+        }
+
+        function resetWordForm() {
+            document.getElementById('wordCz').value = '';
+            document.getElementById('wordForeign').value = '';
+            document.getElementById('wordPron').value = '';
+            document.getElementById('wordType').value = 'unspecified';
+            document.getElementById('verbForms').style.display = 'none';
+            document.getElementById('v_m_anim').value = '';
+            document.getElementById('v_m_inanim').value = '';
+            document.getElementById('v_f').value = '';
+            document.getElementById('v_n').value = '';
+        }
+
+        // UKLÁDÁNÍ DO FIREBASE
+        window.saveLanguage = function() {
+            const name = document.getElementById('newLangName').value.trim();
+            const code = document.getElementById('newLangCode').value.trim().toLowerCase();
+
+            if(!name || !code) return alert("Vyplňte všechny údaje!");
+
+            set(ref(db, 'languages/' + code), {
+                name: name,
+                words: {}
+            }).then(() => {
+                closeModal('langModal');
+                document.getElementById('newLangName').value = '';
+                document.getElementById('newLangCode').value = '';
+            });
+        }
+
+        window.deleteLanguage = function(code) {
+            if(confirm(`Opravdu chcete smazat celý jazyk [${code.toUpperCase()}] včetně všech slov?`)) {
+                remove(ref(db, 'languages/' + code));
+            }
+        }
+
+        window.saveWord = function() {
+            const langCode = document.getElementById('activeLangCode').value;
+            const cz = document.getElementById('wordCz').value.trim().toLowerCase();
+            const foreign = document.getElementById('wordForeign').value.trim();
+            const pron = document.getElementById('wordPron').value.trim();
+            const type = document.getElementById('wordType').value;
+
+            if(!cz || !foreign) return alert("Slovo v češtině i cizím jazyce musí být vyplněno!");
+
+            let wordData = {
+                cz: cz,
+                foreign: foreign,
+                pronunciation: pron,
+                type: type
+            };
+
+            if(type === 'verb') {
+                wordData.forms = {
+                    m_anim: document.getElementById('v_m_anim').value.trim() || foreign,
+                    m_inanim: document.getElementById('v_m_inanim').value.trim() || foreign,
+                    f: document.getElementById('v_f').value.trim() || foreign,
+                    n: document.getElementById('v_n').value.trim() || foreign
+                }
+            }
+
+            // Uložíme pod unikátním klíčem (push) do daného jazyka
+            const wordRef = push(ref(db, `languages/${langCode}/words`));
+            set(wordRef, wordData).then(() => {
+                resetWordForm();
+                renderWordsManager(langCode);
+            });
+        }
+
+        // Zobrazení a mazání slov v administraci
+        function renderWordsManager(langCode) {
+            const container = document.getElementById('wordsManagerList');
+            container.innerHTML = '';
+            const lang = window.allLanguages[langCode];
+            
+            if(!lang.words) {
+                container.innerHTML = '<em>Zatím nebyla přidána žádná slova.</em>';
+                return;
+            }
+
+            Object.keys(lang.words).forEach(wordId => {
+                const w = lang.words[wordId];
+                const item = document.createElement('div');
+                item.className = 'word-item';
+                item.innerHTML = `
+                    <span><strong>${w.cz}</strong> -> ${w.foreign} <em>(${w.type})</em></span>
+                    <button class="btn btn-danger" style="padding:2px 8px; font-size:12px;">Smazat</button>
+                `;
+                item.querySelector('button').onclick = () => {
+                    if(confirm(`Smazat slovo "${w.cz}"?`)) {
+                        remove(ref(db, `languages/${langCode}/words/${wordId}`)).then(() => {
+                            renderWordsManager(langCode);
+                        });
+                    }
+                };
+                container.appendChild(item);
+            });
+        }
+
+
+        // LOGIKA PŘEKLADU
+        window.translateText = function() {
+            const src = document.getElementById('srcLang').value;
+            const dest = document.getElementById('destLang').value;
+            const text = document.getElementById('sourceText').value.trim().toLowerCase();
+            
+            const outText = document.getElementById('outputText');
+            const outPron = document.getElementById('outputPronunciation');
+            const verbSelect = document.getElementById('verbGenderQuery');
+
+            // Reset oken a výběru rodu
+            outText.innerText = '';
+            outPron.innerText = '';
+            verbSelect.style.display = 'none';
+            window.currentSelectedVerbData = null;
+
+            if(!text) {
+                outText.innerText = 'Překlad se zobrazí zde...';
+                outText.style.color = '#5f6368';
+                return;
+            }
+
+            outText.style.color = '#202124';
+
+            // 1. PŘEKLAD Z ČEŠTINY DO CIZÍHO JAZYKA
+            if(src === 'cz') {
+                const lang = window.allLanguages[dest];
+                if(!lang || !lang.words) {
+                    outText.innerText = 'Slovo neexistuje nebo není přidané';
+                    return;
+                }
+
+                // Hledáme slovo podle českého klíče
+                const foundKey = Object.keys(lang.words).find(k => lang.words[k].cz === text);
+                
+                if(foundKey) {
+                    const word = lang.words[foundKey];
+                    if(word.type === 'verb') {
+                        // Pokud je to sloveso, ukážeme možnost výběru rodu podmětu
+                        window.currentSelectedVerbData = word;
+                        verbSelect.style.display = 'block';
+                        // Výchozí zobrazení základního tvaru
+                        outText.innerText = word.foreign;
+                    } else {
+                        outText.innerText = word.foreign;
+                    }
+                    if(word.pronunciation) outPron.innerText = `[vyslovuje se: ${word.pronunciation}]`;
+                } else {
+                    outText.innerText = 'Slovo neexistuje nebo není přidané';
+                }
+            } 
+            // 2. PŘEKLAD Z CIZÍHO JAZYKA DO ČEŠTINY
+            else {
+                const lang = window.allLanguages[src];
+                if(!lang || !lang.words) {
+                    outText.innerText = 'Slovo neexistuje nebo není přidané';
+                    return;
+                }
+
+                // Hledáme slovo podle cizího zápisu (buď základní tvar nebo ve tvarech slovesa)
+                const foundKey = Object.keys(lang.words).find(k => {
+                    const w = lang.words[k];
+                    if(w.foreign.toLowerCase() === text) return true;
+                    if(w.type === 'verb' && w.forms) {
+                        return Object.values(w.forms).some(f => f.toLowerCase() === text);
+                    }
+                    return false;
+                });
+
+                if(foundKey) {
+                    const word = lang.words[foundKey];
+                    outText.innerText = word.cz.toUpperCase(); // Překlad do češtiny
+                    if(word.type !== 'unspecified' && word.type !== 'verb') {
+                        outPron.innerText = `Rod/Druh: ${word.type}`;
+                    }
+                } else {
+                    outText.innerText = 'Slovo neexistuje nebo není přidané';
+                }
+            }
+        }
+
+        // Aplikování správného tvaru slovesa na základě vybraného rodu podmětu
+        window.applyVerbGender = function() {
+            const gender = document.getElementById('verbGenderQuery').value;
+            const outText = document.getElementById('outputText');
+
+            if(window.currentSelectedVerbData && gender) {
+                const forms = window.currentSelectedVerbData.forms;
+                if(forms && forms[gender]) {
+                    outText.innerText = forms[gender] + " (opraveno podle podmětu)";
+                } else {
+                    outText.innerText = window.currentSelectedVerbData.foreign;
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
