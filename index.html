@@ -402,7 +402,7 @@
         const db = getDatabase(app);
 
         window.allLanguages = {};
-        window.currentSelectedVerbWords = []; // Pole pro ukládání nalezených sloves v aktuální větě
+        window.currentSelectedVerbWords = [];
 
         // Ověření hesla pro administrátora
         window.verifyAdmin = function() {
@@ -444,7 +444,7 @@
                 srcLang.value = prevSrc;
                 destLang.value = prevDest || Object.keys(window.allLanguages)[0];
                 
-                if (srcLang.value === destSelect.value) {
+                if (srcLang.value === destLang.value) {
                     destLang.value = (srcLang.value === "cz") ? Object.keys(window.allLanguages)[0] : "cz";
                 }
             } else {
@@ -589,7 +589,7 @@
             });
         }
 
-        // CHYTRÁ FUNKCE PRO DETEKCI INTERPUNKCE (tečky, otazníky...)
+        // Čištění interpunkce
         function cleanWord(word) {
             return word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
         }
@@ -617,14 +617,12 @@
 
             outText.style.color = '#202124';
 
-            // Rozdělení věty na slova pomocí mezer
             const rawWords = text.split(/\s+/);
             let translatedSentence = [];
             let pronunciationSentence = [];
             let globalVerbFound = false;
             let totalWordsFound = 0;
 
-            // 1. SMĚR: Z ČEŠTINY DO CIZÍHO JAZYKA
             if(src === 'cz') {
                 const lang = window.allLanguages[dest];
                 if(!lang || !lang.words) {
@@ -635,7 +633,7 @@
                 rawWords.forEach(rawWord => {
                     const cleaned = cleanWord(rawWord).toLowerCase();
                     if (!cleaned) {
-                        translatedSentence.push(rawWord); // Samostatný otazník/tečka
+                        translatedSentence.push(rawWord);
                         return;
                     }
 
@@ -645,12 +643,10 @@
                         const word = lang.words[foundKey];
                         totalWordsFound++;
                         
-                        // Zachování interpunkce přilepené ke slovu
                         let leftOver = rawWord.replace(new RegExp(cleanWord(rawWord), 'i'), '');
 
                         if(word.type === 'verb') {
                             globalVerbFound = true;
-                            // Uložíme si referenci na objekt slova pro pozdější skloňování cele věty
                             window.currentSelectedVerbWords.push({ index: translatedSentence.length, wordData: word, suffix: leftOver });
                             translatedSentence.push(word.foreign + leftOver);
                         } else {
@@ -663,7 +659,6 @@
                             pronunciationSentence.push(word.foreign);
                         }
                     } else {
-                        // Pokud slovo nezná, nechá původní a přidá hvězdičku
                         translatedSentence.push(rawWord + "*");
                         pronunciationSentence.push(rawWord);
                     }
@@ -681,9 +676,7 @@
                     verbSelect.style.display = 'block';
                 }
 
-            } 
-            // 2. SMĚR: Z CIZÍHO JAZYKA DO ČEŠTINY
-            else {
+            } else {
                 const lang = window.allLanguages[src];
                 if(!lang || !lang.words) {
                     outText.innerText = 'Slovo neexistuje nebo není přidané';
@@ -725,14 +718,12 @@
             }
         }
 
-        // Aplikace správných rodů na všechna nalezená slovesa ve větě
         window.applyVerbGender = function() {
             const gender = document.getElementById('verbGenderQuery').value;
             const sourceText = document.getElementById('sourceText').value.trim();
             
             if(!gender || window.currentSelectedVerbWords.length === 0) return;
 
-            // Znovu vytvoříme základní překlad věty rozdělené na slova
             const lang = window.allLanguages[document.getElementById('destLang').value];
             const rawWords = sourceText.split(/\s+/);
             let translatedSentence = [];
@@ -750,7 +741,6 @@
                 }
             });
 
-            // Teď v poli translatedSentence nahradíme nalezená slovesa jejich správným tvarem podle rodu podmětu
             window.currentSelectedVerbWords.forEach(item => {
                 const forms = item.wordData.forms;
                 if(forms && forms[gender]) {
